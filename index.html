@@ -3,46 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Labyrinthus Drag Scrambler</title>
+<title>Labyrinthus Drag & Scramble</title>
 <style>
 body {
-    margin: 0;
-    font-family: 'Courier New', monospace;
     background: black;
     color: #0ff;
+    font-family: 'Courier New', monospace;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100vh;
-    overflow: hidden;
+    margin: 0;
 }
 
 #board {
-    width: 80%;
-    min-height: 60px;
-    border: 2px solid #0ff;
     display: flex;
-    flex-wrap: wrap;
-    padding: 10px;
+    gap: 5px;
     margin-bottom: 20px;
+}
+
+.slot {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #0ff;
+    display: flex;
+    align-items: center;
     justify-content: center;
+    font-size: 24px;
+    text-shadow: 0 0 5px #0ff, 0 0 10px #0ff;
 }
 
 #letters {
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
-    margin-bottom: 20px;
+    max-width: 90%;
 }
 
 .letter {
     width: 40px;
     height: 40px;
-    line-height: 40px;
-    text-align: center;
     border: 1px solid #0ff;
     border-radius: 5px;
+    text-align: center;
+    line-height: 40px;
     cursor: grab;
     user-select: none;
     font-size: 24px;
@@ -53,33 +58,40 @@ body {
     margin-top: 20px;
     font-size: 24px;
 }
-
 </style>
 </head>
 <body>
 
-<div id="board" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
-
+<div id="board"></div>
 <div id="letters"></div>
-
 <div id="output"></div>
 
 <script>
 const secret = "HIC INCLASUS VITAM PERDITT";
-const lettersContainer = document.getElementById("letters");
+const lettersPool = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ".split('');
 const board = document.getElementById("board");
+const lettersDiv = document.getElementById("letters");
 const output = document.getElementById("output");
-const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ".split('');
 
-// --- Create draggable letter tiles ---
-letters.forEach(char => {
+// --- Create board slots ---
+for (let i = 0; i < secret.length; i++) {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.dataset.index = i;
+    slot.ondrop = drop;
+    slot.ondragover = allowDrop;
+    board.appendChild(slot);
+}
+
+// --- Create draggable letters ---
+lettersPool.forEach(char => {
     const div = document.createElement("div");
     div.className = "letter";
-    div.draggable = true;
     div.textContent = char;
-    div.id = "letter_" + char + Math.floor(Math.random()*1000);
-    div.addEventListener("dragstart", drag);
-    lettersContainer.appendChild(div);
+    div.draggable = true;
+    div.id = "letter_" + char + Math.floor(Math.random() * 1000);
+    div.ondragstart = drag;
+    lettersDiv.appendChild(div);
 });
 
 function allowDrop(ev) {
@@ -93,33 +105,34 @@ function drag(ev) {
 function drop(ev) {
     ev.preventDefault();
     const data = ev.dataTransfer.getData("text");
-    const letterTile = document.getElementById(data);
-    board.appendChild(letterTile);
+    const dragged = document.getElementById(data);
+    if (!ev.target.textContent) { // only drop in empty slots
+        ev.target.textContent = dragged.textContent;
+        dragged.remove();
+    }
 
-    // Start scrambling after letters are dropped
-    startScrambleAnimation();
+    // Check if board is full
+    const allFilled = [...board.children].every(slot => slot.textContent);
+    if (allFilled) startScramble();
 }
 
 let scrambleInterval;
-function startScrambleAnimation() {
+function startScramble() {
     clearInterval(scrambleInterval);
     scrambleInterval = setInterval(() => {
-        const boardLetters = board.querySelectorAll(".letter");
-        boardLetters.forEach((tile, index) => {
-            // Replace letter with random if phrase not fully revealed
-            tile.textContent = Math.random() > 0.5 ? secret[index] : letters[Math.floor(Math.random() * letters.length)];
+        [...board.children].forEach((slot, index) => {
+            slot.textContent = Math.random() > 0.5 ? secret[index] : lettersPool[Math.floor(Math.random() * lettersPool.length)];
         });
     }, 100);
 
-    // Reveal the secret after a delay
+    // Reveal secret after 4 seconds
     setTimeout(() => {
         clearInterval(scrambleInterval);
-        const boardLetters = board.querySelectorAll(".letter");
-        boardLetters.forEach((tile, index) => {
-            tile.textContent = secret[index];
+        [...board.children].forEach((slot, index) => {
+            slot.textContent = secret[index];
         });
         output.textContent = "The phrase is revealed!";
-    }, 4000); // 4 seconds scrambling
+    }, 4000);
 }
 </script>
 
