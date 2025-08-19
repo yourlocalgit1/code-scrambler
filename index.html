@@ -39,6 +39,7 @@ body {
     flex-wrap: wrap;
     gap: 5px;
     max-width: 90%;
+    margin-bottom: 10px;
 }
 
 .letter {
@@ -54,6 +55,22 @@ body {
     text-shadow: 0 0 5px #0ff, 0 0 10px #0ff;
 }
 
+button {
+    background: black;
+    border: 1px solid #0ff;
+    color: #0ff;
+    padding: 8px 15px;
+    margin: 5px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-shadow: 0 0 5px #0ff;
+}
+
+button:hover {
+    box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+}
+
 #output {
     margin-top: 20px;
     font-size: 24px;
@@ -64,6 +81,10 @@ body {
 
 <div id="board"></div>
 <div id="letters"></div>
+<div>
+    <button onclick="shuffleLetters()">Shuffle Letters</button>
+    <button onclick="submitBoard()">Submit</button>
+</div>
 <div id="output"></div>
 
 <script>
@@ -84,15 +105,19 @@ for (let i = 0; i < secret.length; i++) {
 }
 
 // --- Create draggable letters ---
-lettersPool.forEach(char => {
-    const div = document.createElement("div");
-    div.className = "letter";
-    div.textContent = char;
-    div.draggable = true;
-    div.id = "letter_" + char + Math.floor(Math.random() * 1000);
-    div.ondragstart = drag;
-    lettersDiv.appendChild(div);
-});
+function createLetters() {
+    lettersDiv.innerHTML = "";
+    lettersPool.forEach(char => {
+        const div = document.createElement("div");
+        div.className = "letter";
+        div.textContent = char;
+        div.draggable = true;
+        div.id = "letter_" + char + Math.floor(Math.random() * 1000);
+        div.ondragstart = drag;
+        lettersDiv.appendChild(div);
+    });
+}
+createLetters();
 
 function allowDrop(ev) {
     ev.preventDefault();
@@ -110,28 +135,49 @@ function drop(ev) {
         ev.target.textContent = dragged.textContent;
         dragged.remove();
     }
-
-    // Check if board is full
-    const allFilled = [...board.children].every(slot => slot.textContent);
-    if (allFilled) startScramble();
 }
 
+// --- Shuffle button ---
+function shuffleLetters() {
+    const allLetters = [];
+    lettersDiv.querySelectorAll(".letter").forEach(l => allLetters.push(l.textContent));
+    allLetters.sort(() => Math.random() - 0.5);
+    lettersDiv.innerHTML = "";
+    allLetters.forEach(char => {
+        const div = document.createElement("div");
+        div.className = "letter";
+        div.textContent = char;
+        div.draggable = true;
+        div.id = "letter_" + char + Math.floor(Math.random() * 1000);
+        div.ondragstart = drag;
+        lettersDiv.appendChild(div);
+    });
+}
+
+// --- Submit button ---
 let scrambleInterval;
-function startScramble() {
+function submitBoard() {
+    const allFilled = [...board.children].every(slot => slot.textContent);
+    if (!allFilled) {
+        output.textContent = "Fill all slots first!";
+        output.style.color = "#f00";
+        return;
+    }
+
+    output.textContent = "";
     clearInterval(scrambleInterval);
+
     scrambleInterval = setInterval(() => {
         [...board.children].forEach((slot, index) => {
             slot.textContent = Math.random() > 0.5 ? secret[index] : lettersPool[Math.floor(Math.random() * lettersPool.length)];
         });
     }, 100);
 
-    // Reveal secret after 4 seconds
     setTimeout(() => {
         clearInterval(scrambleInterval);
-        [...board.children].forEach((slot, index) => {
-            slot.textContent = secret[index];
-        });
+        [...board.children].forEach((slot, index) => slot.textContent = secret[index]);
         output.textContent = "The phrase is revealed!";
+        output.style.color = "#0f0";
     }, 4000);
 }
 </script>
