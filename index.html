@@ -1,166 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Code Scrambler</title>
-  <style>
-    body {
-      background: #0d1117;
-      color: #e6edf3;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    h1 {
-      font-size: 2em;
-      margin-bottom: 0.5em;
-    }
-    .rack, .board {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin: 10px auto;
-      gap: 6px;
-    }
-    .tile, .slot {
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .tile {
-      background: #d32f2f;
-      color: white;
-      cursor: grab;
-    }
-    .slot {
-      background: #2c2f33;
-      border: 2px dashed #444;
-      color: #e6edf3;
-    }
-    .slot.filled {
-      background: #444;
-      border: none;
-      cursor: default;
-    }
-    button {
-      background: #1f6feb;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      color: white;
-      font-weight: bold;
-      margin: 4px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #388bfd;
-    }
-    #status {
-      margin-top: 15px;
-      font-size: 1.2em;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Labyrinthus Scrambler</title>
+<style>
+body {
+    margin: 0;
+    font-family: 'Courier New', monospace;
+    background: black;
+    color: #0ff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#codeDisplay {
+    font-size: 32px;
+    text-shadow: 0 0 5px #0ff, 0 0 10px #0ff, 0 0 20px #0ff;
+    letter-spacing: 3px;
+}
+
+input, button {
+    background: black;
+    border: 1px solid #0ff;
+    color: #0ff;
+    padding: 10px;
+    margin: 10px;
+    border-radius: 5px;
+    font-size: 18px;
+    text-align: center;
+}
+
+button:hover {
+    box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+    cursor: pointer;
+}
+
+#output {
+    margin-top: 20px;
+    font-size: 24px;
+}
+</style>
 </head>
 <body>
-  <h1>CODE SCRAMBLER</h1>
-  <p>Drag the letters into the grid to reveal the hidden phrase.  
-  Hint: it's Latin — from the movie <i>Labyrinthus</i>.</p>
 
-  <div>
-    <button onclick="shuffle()">Shuffle</button>
-    <button onclick="check()">Check</button>
-    <button onclick="reveal()">Reveal</button>
-  </div>
+<div id="codeDisplay"></div>
+<input type="text" id="codeInput" placeholder="Enter code here">
+<button onclick="scrambleCheck()">Submit</button>
+<div id="output"></div>
 
-  <h3>Letter Rack</h3>
-  <div class="rack" id="rack"></div>
+<script>
+const secret = "HIC INCLASUS VITAM PERDITT";
+const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
+const codeDisplay = document.getElementById("codeDisplay");
+let scrambleInterval;
 
-  <h3>Board</h3>
-  <div class="board" id="board"></div>
-
-  <div id="status"></div>
-
-  <script>
-    // Target phrase (hidden with base64 so it’s not in plain text)
-    const phrase = atob("SElDSU5DTEFTVVNWSVRBTVBFUkRJVFQ="); // HICINCLUSUSVITAMPERDIT
-    const width = 9, height = 3, total = width * height;
-
-    const letters = phrase.split("");
-    const placeholders = Array(total - letters.length).fill('');
-    const solution = [...letters, ...placeholders];
-
-    const board = document.getElementById('board');
-    const rack = document.getElementById('rack');
-    const status = document.getElementById('status');
-
-    // Build slots for the board
-    for (let i = 0; i < total; i++) {
-      const slot = document.createElement('div');
-      slot.className = 'slot';
-      slot.dataset.index = i;
-      slot.ondrop = drop;
-      slot.ondragover = allowDrop;
-      board.appendChild(slot);
+// --- Start with fully scrambled display ---
+function startScramble() {
+    let display = "";
+    for(let i = 0; i < secret.length; i++){
+        display += letters[Math.floor(Math.random() * letters.length)];
     }
+    codeDisplay.textContent = display;
+}
 
-    // Shuffle & populate rack
-    function shuffle() {
-      rack.innerHTML = '';
-      const shuffled = [...letters].sort(() => Math.random() - 0.5);
-      shuffled.forEach((ch, idx) => {
-        const tile = document.createElement('div');
-        tile.className = 'tile';
-        tile.draggable = true;
-        tile.innerText = ch;
-        tile.id = 'tile' + idx;
-        tile.ondragstart = drag;
-        rack.appendChild(tile);
-      });
-    }
+// --- Continuously scramble letters ---
+scrambleInterval = setInterval(startScramble, 100);
 
-    function check() {
-      const placed = Array.from(board.children).map(c => c.innerText || '');
-      if (placed.join('') === solution.join('')) {
-        status.innerText = "✅ Correct!";
-      } else {
-        status.innerText = "❌ Not quite—keep going!";
-      }
-    }
+// --- Check code and reveal gradually ---
+function scrambleCheck() {
+    const input = document.getElementById("codeInput").value.trim().toUpperCase();
+    const output = document.getElementById("output");
+    clearInterval(scrambleInterval); // stop continuous scramble
 
-    function reveal() {
-      board.innerHTML = '';
-      solution.forEach((ch) => {
-        const slot = document.createElement('div');
-        slot.className = 'slot filled';
-        slot.innerText = ch;
-        board.appendChild(slot);
-      });
-    }
+    let i = 0;
+    const revealInterval = setInterval(() => {
+        let display = "";
+        for(let j = 0; j < secret.length; j++){
+            if(j <= i) display += secret[j];
+            else display += letters[Math.floor(Math.random() * letters.length)];
+        }
+        codeDisplay.textContent = display;
+        i++;
+        if(i >= secret.length){
+            clearInterval(revealInterval);
+            if(input === secret){
+                output.textContent = "Code Accepted!";
+                output.style.color = "#0f0";
+            } else {
+                output.textContent = "Invalid Code!";
+                output.style.color = "#f00";
+            }
+        }
+    }, 50);
+}
+</script>
 
-    function allowDrop(ev) { ev.preventDefault(); }
-    function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
-    function drop(ev) {
-      ev.preventDefault();
-      const data = ev.dataTransfer.getData("text");
-      const tile = document.getElementById(data);
-      if (tile) {
-        ev.target.innerText = tile.innerText;
-        tile.remove();
-      }
-    }
-
-    // Initial shuffle
-    shuffle();
-  </script>
 </body>
 </html>
-
-
-
-
-
