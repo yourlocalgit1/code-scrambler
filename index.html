@@ -140,25 +140,19 @@ function drop(ev) {
     }
 }
 
-// --- Shuffle button (returns all letters to pool and shuffles) ---
+// --- Shuffle button (shuffles only pool letters) ---
 function shuffleLetters() {
-    const allLetters = [];
+    const poolLetters = [];
 
-    // Add letters from the pool
-    lettersDiv.querySelectorAll(".letter").forEach(l => allLetters.push(l.textContent));
-
-    // Add letters from the board
-    board.querySelectorAll(".slot").forEach(slot => {
-        if (slot.textContent) allLetters.push(slot.textContent);
-        slot.textContent = ""; // clear board
-    });
+    // Collect only letters in the pool
+    lettersDiv.querySelectorAll(".letter").forEach(l => poolLetters.push(l.textContent));
 
     // Shuffle array
-    allLetters.sort(() => Math.random() - 0.5);
+    poolLetters.sort(() => Math.random() - 0.5);
 
     // Recreate letters in the pool
     lettersDiv.innerHTML = "";
-    allLetters.forEach(char => {
+    poolLetters.forEach(char => {
         const div = document.createElement("div");
         div.className = "letter";
         div.textContent = char;
