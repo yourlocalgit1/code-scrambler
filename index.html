@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Labyrinthus Scrambler</title>
+<title>Labyrinthus Drag Scrambler</title>
 <style>
 body {
     margin: 0;
@@ -18,85 +18,108 @@ body {
     overflow: hidden;
 }
 
-#codeDisplay {
-    font-size: 32px;
-    text-shadow: 0 0 5px #0ff, 0 0 10px #0ff, 0 0 20px #0ff;
-    letter-spacing: 3px;
-}
-
-input, button {
-    background: black;
-    border: 1px solid #0ff;
-    color: #0ff;
+#board {
+    width: 80%;
+    min-height: 60px;
+    border: 2px solid #0ff;
+    display: flex;
+    flex-wrap: wrap;
     padding: 10px;
-    margin: 10px;
-    border-radius: 5px;
-    font-size: 18px;
-    text-align: center;
+    margin-bottom: 20px;
+    justify-content: center;
 }
 
-button:hover {
-    box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
-    cursor: pointer;
+#letters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 20px;
+}
+
+.letter {
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    border: 1px solid #0ff;
+    border-radius: 5px;
+    cursor: grab;
+    user-select: none;
+    font-size: 24px;
+    text-shadow: 0 0 5px #0ff, 0 0 10px #0ff;
 }
 
 #output {
     margin-top: 20px;
     font-size: 24px;
 }
+
 </style>
 </head>
 <body>
 
-<div id="codeDisplay"></div>
-<input type="text" id="codeInput" placeholder="Enter code here">
-<button onclick="scrambleCheck()">Submit</button>
+<div id="board" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+
+<div id="letters"></div>
+
 <div id="output"></div>
 
 <script>
 const secret = "HIC INCLASUS VITAM PERDITT";
-const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
-const codeDisplay = document.getElementById("codeDisplay");
-let scrambleInterval;
+const lettersContainer = document.getElementById("letters");
+const board = document.getElementById("board");
+const output = document.getElementById("output");
+const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ".split('');
 
-// --- Start with fully scrambled display ---
-function startScramble() {
-    let display = "";
-    for(let i = 0; i < secret.length; i++){
-        display += letters[Math.floor(Math.random() * letters.length)];
-    }
-    codeDisplay.textContent = display;
+// --- Create draggable letter tiles ---
+letters.forEach(char => {
+    const div = document.createElement("div");
+    div.className = "letter";
+    div.draggable = true;
+    div.textContent = char;
+    div.id = "letter_" + char + Math.floor(Math.random()*1000);
+    div.addEventListener("dragstart", drag);
+    lettersContainer.appendChild(div);
+});
+
+function allowDrop(ev) {
+    ev.preventDefault();
 }
 
-// --- Continuously scramble letters ---
-scrambleInterval = setInterval(startScramble, 100);
+function drag(ev) {
+    ev.dataTransfer.setData("text", ev.target.id);
+}
 
-// --- Check code and reveal gradually ---
-function scrambleCheck() {
-    const input = document.getElementById("codeInput").value.trim().toUpperCase();
-    const output = document.getElementById("output");
-    clearInterval(scrambleInterval); // stop continuous scramble
+function drop(ev) {
+    ev.preventDefault();
+    const data = ev.dataTransfer.getData("text");
+    const letterTile = document.getElementById(data);
+    board.appendChild(letterTile);
 
-    let i = 0;
-    const revealInterval = setInterval(() => {
-        let display = "";
-        for(let j = 0; j < secret.length; j++){
-            if(j <= i) display += secret[j];
-            else display += letters[Math.floor(Math.random() * letters.length)];
-        }
-        codeDisplay.textContent = display;
-        i++;
-        if(i >= secret.length){
-            clearInterval(revealInterval);
-            if(input === secret){
-                output.textContent = "Code Accepted!";
-                output.style.color = "#0f0";
-            } else {
-                output.textContent = "Invalid Code!";
-                output.style.color = "#f00";
-            }
-        }
-    }, 50);
+    // Start scrambling after letters are dropped
+    startScrambleAnimation();
+}
+
+let scrambleInterval;
+function startScrambleAnimation() {
+    clearInterval(scrambleInterval);
+    scrambleInterval = setInterval(() => {
+        const boardLetters = board.querySelectorAll(".letter");
+        boardLetters.forEach((tile, index) => {
+            // Replace letter with random if phrase not fully revealed
+            tile.textContent = Math.random() > 0.5 ? secret[index] : letters[Math.floor(Math.random() * letters.length)];
+        });
+    }, 100);
+
+    // Reveal the secret after a delay
+    setTimeout(() => {
+        clearInterval(scrambleInterval);
+        const boardLetters = board.querySelectorAll(".letter");
+        boardLetters.forEach((tile, index) => {
+            tile.textContent = secret[index];
+        });
+        output.textContent = "The phrase is revealed!";
+    }, 4000); // 4 seconds scrambling
 }
 </script>
 
