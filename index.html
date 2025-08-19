@@ -107,7 +107,7 @@ for (let i = 0; i < secret.length; i++) {
     board.appendChild(slot);
 }
 
-// --- Create draggable letters ---
+// --- Create initial pool letters ---
 function createLetters() {
     lettersDiv.innerHTML = "";
     lettersPool.forEach(char => {
@@ -140,17 +140,21 @@ function drop(ev) {
     }
 }
 
-// --- Shuffle button (shuffles only pool letters) ---
+// --- Shuffle letters only in the pool ---
 function shuffleLetters() {
-    const poolLetters = [];
+    const usedLetters = new Set();
+    // Collect letters on the board
+    board.querySelectorAll(".slot").forEach(slot => {
+        if (slot.textContent) usedLetters.add(slot.textContent);
+    });
 
-    // Collect only letters in the pool
-    lettersDiv.querySelectorAll(".letter").forEach(l => poolLetters.push(l.textContent));
+    // Letters still available for the pool
+    const poolLetters = lettersPool.filter(char => !usedLetters.has(char));
 
-    // Shuffle array
+    // Shuffle
     poolLetters.sort(() => Math.random() - 0.5);
 
-    // Recreate letters in the pool
+    // Recreate letters in pool
     lettersDiv.innerHTML = "";
     poolLetters.forEach(char => {
         const div = document.createElement("div");
