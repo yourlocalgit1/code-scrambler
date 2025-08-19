@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Code Scrambler</title>
+  <style>
+    :root{
+      --bg:#0b0f17; --grid:#101826; --accent:#e43d3d; --soft:#a9b3c0; --good:#44c767; --bad:#ff5d5d;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; 
+      background: radial-gradient(1200px 800px at 70% -10%, #172235 0%, var(--bg) 45%) no-repeat, var(--bg);
+      color:#e6e9ef; display:grid; place-items:center; padding:24px;
+    }
+    .wrap{width:min(900px, 92vw);}    
+    h1{letter-spacing:.08em; text-transform:uppercase; font-weight:800; margin:8px 0 16px;}
+    p{color:var(--soft); margin:4px 0 16px;}
+    .panel{
+      background:linear-gradient(180deg,#111a29,#0c121d); border:1px solid #1f2c42; border-radius:18px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .grid{display:grid; grid-template-columns:repeat(9, 1fr); gap:12px; background:linear-gradient(180deg,#0c1422,#0a111c); padding:18px; border-radius:16px; border:1px solid #17253b}
+    .tile{
+      user-select:none; background:linear-gradient(180deg,#b21c1c,#8f1717); border:1px solid #741414; color:white; font-weight:900; font-size:28px; 
+      text-shadow:0 2px 0 rgba(0,0,0,.35); border-radius:10px; display:grid; place-items:center; height:64px; cursor:grab; letter-spacing:.06em;
+      box-shadow:inset 0 -4px 0 rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.35);
+    }
+    .tile:active{cursor:grabbing}
+    .slot{height:64px; border:1px dashed #2a3b57; background:#0c1423; border-radius:10px}
+    .slot.over{outline:2px dashed #3c78ff; outline-offset:4px}
+    .rack{display:grid; grid-template-columns:repeat(auto-fill, minmax(48px,1fr)); gap:10px; padding:12px; border-radius:14px; background:#0b1321; border:1px solid #1a2942}
+    .controls{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
+    button{background:#1a2841; border:1px solid #263a62; color:#e8eef9; padding:10px 14px; border-radius:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; cursor:pointer}
+    button:hover{filter:brightness(1.1)}
+    .status{margin-left:auto; font-weight:700}
+    .ok{color:var(--good)} .bad{color:var(--bad)}
+    .caption{font-size:12px; color:#7e8ba1;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Code Scrambler</h1>
+    <p>Drag the letters into the grid to reveal the hidden phrase. Hint: it's Latin—<span class="caption">from the movie <em>Labyrinthus</em></span>.</p>
+
+    <div class="panel" id="game">
+      <div class="grid" id="board"></div>
+      <div class="controls">
+        <button id="shuffle">Shuffle</button>
+        <button id="check">Check</button>
+        <button id="reveal">Reveal</button>
+        <div class="status" id="status"></div>
+      </div>
+      <h3 style="margin:18px 0 8px">Letter Rack</h3>
+      <div class="rack" id="rack"></div>
+    </div>
+    <p class="caption">Target phrase: HIC INCLUSUS VITAM PERDIT</p>
+  </div>
+  <script>
+    // Target solution (27 characters incl. spaces removed; we lay out a 9x3 grid)
+    const phrase = "HICINCLUSUSVITAMPERDIT"; // 21 letters; we'll pad with 6 blockers for 9x3
+    const width = 9, height = 3, total = width*height;
+
+    // Build slots for the board
+    const board = document.getElementById('board');
+    const rack = document.getElementById('rack');
+    const status = document.getElementById('status');
+
+    const letters = phrase.split("");
+    // Fill remaining with placeholders (•) that act like fixed empty walls
+    const placeholders = Array(total - letters.length).fill('');
+    const solution = [...letters, ...placeholders];
+
+    // Precompute solution positions per index
+    // We'll map to a 9x3 by rows
+
+    function createBoard(){
+      board.innerHTML = '';
+      for(let i=0;i<total;i++){
+        const slot = document.createElement('div');
+        slot.className = 'slot';
+        slot.dataset.index = i;
+        slot.addEventListener('dragover',ev=>{ev.preventDefault(); slot.classList.add('over');});
+        slot.addEventListener('dragleave',()=>slot.classList.remove('over'));
+        slot.addEventListener('drop',ev=>{
+          ev.preventDefault(); slot.classList.remove('over');
+          const id = ev.dataTransfer.getData('text/plain');
+          const tile = document.getElementById(id);
+          if(!tile) return;
+          // if slot has a tile already, send it back to rack
+          const existing = slot.querySelector('.tile');
+          if(existing) rack.appendChild(existing);
+          slot.appendChild(tile);
+        });
+        board.appendChild(slot);
+      }
+    }
+
+    function makeTile(char, i){
+      const t = document.createElement('div');
+      t.className = 'tile';
+      t.textContent = char;
+      t.id = 'tile-'+i+'-'+Math.random().toString(36).slice(2,7);
+      t.draggable = true;
+      t.addEventListener('dragstart', ev=>{
+        ev.dataTransfer.setData('text/plain', t.id);
+      });
+      return t;
+    }
+
+    function fillRack(shuffled){
+      rack.innerHTML = '';
+      shuffled.forEach((ch,i)=> rack.appendChild(makeTile(ch,i)) );
+    }
+
+    function shuffle(arr){
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+      }
+      return a;
+    }
+
+    function getBoardLetters(){
+      const chars = [];
+      [...board.children].forEach(slot=>{
+        const tile = slot.querySelector('.tile');
+        chars.push(tile? tile.textContent : '');
+      });
+      return chars;
+    }
+
+    function check(){
+      const current = getBoardLetters();
+      let ok = true;
+      for(let i=0;i<total;i++){
+        if(current[i] !== solution[i]){ ok=false; break; }
+      }
+      status.textContent = ok? 'Correct! HIC INCLUSUS VITAM PERDIT' : 'Not quite—keep going!';
+      status.className = 'status ' + (ok? 'ok' : 'bad');
+    }
+
+    function reveal(){
+      // Move/create tiles to correct slots
+      // First return all tiles to rack
+      [...board.querySelectorAll('.tile')].forEach(t=>rack.appendChild(t));
+      // Ensure rack has one tile per solution character
+      rack.innerHTML = '';
+      solution.forEach((ch,i)=>{ if(ch){ rack.appendChild(makeTile(ch,i)); } });
+      // Place into slots
+      let k = 0;
+      for(let i=0;i<total;i++){
+        const slot = board.children[i];
+        if(solution[i]){ slot.appendChild(rack.children[k]); k++; }
+      }
+      check();
+    }
+
+    // Initialize
+    createBoard();
+    fillRack(shuffle(letters));
+
+    document.getElementById('shuffle').onclick = ()=> fillRack(shuffle(letters));
+    document.getElementById('check').onclick = check;
+    document.getElementById('reveal').onclick = reveal;
+  </script>
+</body>
+</html>
