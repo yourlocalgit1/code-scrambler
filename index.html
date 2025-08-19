@@ -57,9 +57,14 @@
     <p class="caption">Target phrase: You will find it.</p>
   </div>
   <script>
-    // Target solution (27 characters incl. spaces removed; we lay out a 9x3 grid)
-    const phrase = atob("SElDSU5DTEFTVVNWSVRBTVBFUkRJVFQ="); // 21 letters; we'll pad with 6 blockers for 9x3
-    const width = 9, height = 3, total = width*height;
+    // Target solution (hidden in base64 so it’s not plain text in source)
+    const phrase = atob("SElDSU5DTEFTVVNWSVRBTVBFUkRJVFQ="); // "HICINCLUSUSVITAMPERDIT"
+    const width = 9, height = 3, total = width * height;
+
+    // Prepare solution array
+    const letters = phrase.split("");
+    const placeholders = Array(total - letters.length).fill('');
+    const solution = [...letters, ...placeholders];
 
     // Build slots for the board
     const board = document.getElementById('board');
@@ -168,6 +173,7 @@
 </body>
 
 </html>
+
 
 
 
