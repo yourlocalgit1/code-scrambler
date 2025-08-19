@@ -140,14 +140,20 @@ function drop(ev) {
     }
 }
 
-// --- Shuffle button (keeps board letters) ---
+// --- Shuffle button (returns all letters to pool and shuffles) ---
 function shuffleLetters() {
     const allLetters = [];
 
-    // Only shuffle letters in the pool (board letters stay)
+    // Add letters from the pool
     lettersDiv.querySelectorAll(".letter").forEach(l => allLetters.push(l.textContent));
 
-    // Shuffle the array
+    // Add letters from the board
+    board.querySelectorAll(".slot").forEach(slot => {
+        if (slot.textContent) allLetters.push(slot.textContent);
+        slot.textContent = ""; // clear board
+    });
+
+    // Shuffle array
     allLetters.sort(() => Math.random() - 0.5);
 
     // Recreate letters in the pool
